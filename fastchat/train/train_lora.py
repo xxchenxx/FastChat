@@ -144,6 +144,12 @@ def train():
         if lora_args.q_lora
         else None,
     )
+
+    if model_args.checkpoint:
+        print(f"Loading checkpoint from {model_args.checkpoint}")
+        checkpoint = torch.load(model_args.checkpoint, map_location="cpu")
+        model.load_state_dict(checkpoint)
+
     lora_config = LoraConfig(
         r=lora_args.lora_r,
         lora_alpha=lora_args.lora_alpha,

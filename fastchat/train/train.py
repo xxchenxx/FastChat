@@ -46,6 +46,14 @@ class ModelArguments:
         default="right", metadata={"help": "The padding side in tokenizer"}
     )
 
+    checkpoint: str = field(
+        default=None,
+        metadata={
+            "help": "Path to a checkpoint to resume training from. "
+            "This can be a pretrained model or a checkpoint from a previous run."
+        },
+    )
+
 
 @dataclass
 class DataArguments:
@@ -126,7 +134,7 @@ def preprocess(
     sep = conv.sep + conv.roles[1] + ": "
     for conversation, target in zip(conversations, targets):
         total_len = int(target.ne(tokenizer.pad_token_id).sum())
-
+        # print(total_len)
         turns = conversation.split(conv.sep2)
         cur_len = 1
         target[:cur_len] = IGNORE_TOKEN_ID
@@ -134,14 +142,14 @@ def preprocess(
             if turn == "":
                 break
             turn_len = len(tokenizer(turn).input_ids)
-
+            # print(turn_len)
             parts = turn.split(sep)
             if len(parts) != 2:
                 break
             parts[0] += sep
             # "-2" is hardcoded for the Llama tokenizer to make the offset correct.
             instruction_len = len(tokenizer(parts[0]).input_ids) - 2
-
+            # print(instruction_len)
             if i != 0 and not tokenizer.legacy:
                 # The legacy and non-legacy modes handle special tokens differently
                 instruction_len -= 1
@@ -164,7 +172,7 @@ def preprocess(
 
         if cur_len < tokenizer.model_max_length:
             if cur_len != total_len:
-                target[:] = IGNORE_TOKEN_ID
+                # target[:] = IGNORE_TOKEN_ID
                 rank0_print(
                     f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}."
                     f" #turn = {len(turns) - 1}. (ignored)"
@@ -281,6 +289,12 @@ def train():
         cache_dir=training_args.cache_dir,
         trust_remote_code=model_args.trust_remote_code,
     )
+
+    if model_args.checkpoint:
+        rank0_print(f"Loading checkpoint from {model_args.checkpoint}")
+        checkpoint = torch.load(model_args.checkpoint, map_location="cpu")
+        model.load_state_dict(checkpoint)
+
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,

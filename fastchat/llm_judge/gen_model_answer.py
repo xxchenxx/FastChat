@@ -96,6 +96,10 @@ def get_model_answers(
     )
 
     for question in tqdm(questions):
+
+        # if question["question_id"] in ['160', '157']:
+        #     continue
+            
         if question["category"] in temperature_config:
             temperature = temperature_config[question["category"]]
         else:
@@ -107,25 +111,28 @@ def get_model_answers(
             conv = get_conversation_template(model_id)
             turns = []
             for j in range(len(question["turns"])):
+                print("Line 114")
                 qs = question["turns"][j]
                 conv.append_message(conv.roles[0], qs)
                 conv.append_message(conv.roles[1], None)
                 prompt = conv.get_prompt()
-                input_ids = tokenizer([prompt]).input_ids
-
+                input_ids = tokenizer([prompt]).input_ids[:, :2048]
+                print("Line 120")
                 if temperature < 1e-4:
                     do_sample = False
                 else:
                     do_sample = True
 
                 # some models may error out when generating long outputs
+                print("Line 126")
                 try:
                     output_ids = model.generate(
-                        torch.as_tensor(input_ids).cuda(),
+                        input_ids=torch.as_tensor(input_ids).cuda(),
                         do_sample=do_sample,
                         temperature=temperature,
                         max_new_tokens=max_new_token,
                     )
+                    print("output_ids: ", output_ids)
                     if model.config.is_encoder_decoder:
                         output_ids = output_ids[0]
                     else:
@@ -145,6 +152,7 @@ def get_model_answers(
                         output_ids,
                         spaces_between_special_tokens=False,
                     )
+                    print("output: ", output)
                     if conv.stop_str and isinstance(conv.stop_str, list):
                         stop_str_indices = sorted(
                             [
@@ -165,10 +173,11 @@ def get_model_answers(
                         else:
                             output = output.replace(special_token, "")
                     output = output.strip()
-
+                    print("Line 173:", output)
                     if conv.name == "xgen" and output.startswith("Assistant:"):
                         output = output.replace("Assistant:", "", 1).strip()
                 except RuntimeError as e:
+                    print(e)
                     print("ERROR question ID: ", question["question_id"])
                     output = "ERROR"
 
