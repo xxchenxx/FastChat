@@ -54,6 +54,14 @@ class ModelArguments:
         },
     )
 
+    lora_checkpoint: str = field(
+        default=None,
+        metadata={
+            "help": "Path to a checkpoint to resume training from. "
+            "This can be a pretrained model or a checkpoint from a previous run."
+        },
+    )
+
 
 @dataclass
 class DataArguments:

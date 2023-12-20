@@ -116,7 +116,7 @@ def get_model_answers(
                 conv.append_message(conv.roles[0], qs)
                 conv.append_message(conv.roles[1], None)
                 prompt = conv.get_prompt()
-                input_ids = tokenizer([prompt]).input_ids[:, :2048]
+                input_ids = tokenizer([prompt]).input_ids
                 print("Line 120")
                 if temperature < 1e-4:
                     do_sample = False
@@ -124,13 +124,14 @@ def get_model_answers(
                     do_sample = True
 
                 # some models may error out when generating long outputs
-                print("Line 126")
+
                 try:
+                    print(torch.as_tensor(input_ids).cuda().shape)
                     output_ids = model.generate(
-                        input_ids=torch.as_tensor(input_ids).cuda(),
+                        input_ids=torch.as_tensor(input_ids).cuda()[:, :2048],
                         do_sample=do_sample,
                         temperature=temperature,
-                        max_new_tokens=max_new_token,
+                        max_new_tokens=min(max_new_token, 2048-len(input_ids[0])),
                     )
                     print("output_ids: ", output_ids)
                     if model.config.is_encoder_decoder:
@@ -152,7 +153,7 @@ def get_model_answers(
                         output_ids,
                         spaces_between_special_tokens=False,
                     )
-                    print("output: ", output)
+                    # print("output: ", output)
                     if conv.stop_str and isinstance(conv.stop_str, list):
                         stop_str_indices = sorted(
                             [
@@ -173,7 +174,6 @@ def get_model_answers(
                         else:
                             output = output.replace(special_token, "")
                     output = output.strip()
-                    print("Line 173:", output)
                     if conv.name == "xgen" and output.startswith("Assistant:"):
                         output = output.replace("Assistant:", "", 1).strip()
                 except RuntimeError as e:
