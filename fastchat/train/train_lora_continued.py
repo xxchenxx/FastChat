@@ -100,6 +100,7 @@ class LlamaForCausalLM(transformers.models.llama.modeling_llama.LlamaForCausalLM
             print(shift_logits.shape)
             print(shift_labels.shape)
             loss = loss_fct(shift_logits, shift_labels)
+            print(loss.shape)
             print(loss.mean())
             loss = loss.mean()
             # loss = loss.reshape(bs, -1)
