@@ -92,7 +92,7 @@ class LlamaForCausalLM(transformers.models.llama.modeling_llama.LlamaForCausalLM
             shift_labels = labels[..., 1:].contiguous()
             # Flatten the tokens
             bs = shift_logits.shape[0]
-            loss_fct = CrossEntropyLoss()
+            loss_fct = CrossEntropyLoss(reduction='none')
             shift_logits = shift_logits.view(-1, self.config.vocab_size)
             shift_labels = shift_labels.view(-1)
             # Enable model parallelism
