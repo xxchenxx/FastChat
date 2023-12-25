@@ -99,14 +99,15 @@ class LlamaForCausalLM(transformers.models.llama.modeling_llama.LlamaForCausalLM
             shift_labels = shift_labels.to(shift_logits.device)
             loss = loss_fct(shift_logits, shift_labels)
             print(loss.mean())
-            loss = loss.reshape(bs, -1)
-            loss = loss.mean(1)
-            print(loss.shape)
-            # sort the loss
-            loss_order = torch.argsort(loss, descending=True)
-            quarter_size = loss_order.size(0) // 4
+            loss = loss.mean()
+            # loss = loss.reshape(bs, -1)
+            # loss = loss.mean(1)
             # print(loss.shape)
-            loss = loss[loss_order[quarter_size:2*quarter_size]].mean()
+            # sort the loss
+            # loss_order = torch.argsort(loss, descending=True)
+            # quarter_size = loss_order.size(0) // 4
+            # print(loss.shape)
+            # loss = loss[loss_order[quarter_size:2*quarter_size]].mean()
 
         if not return_dict:
             output = (logits,) + outputs[1:]
