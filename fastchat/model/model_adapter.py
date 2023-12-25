@@ -178,6 +178,7 @@ def load_model(
     xft_config: Optional[XftConfig] = None,
     revision: str = "main",
     debug: bool = False,
+    cache_dir: str = None,
 ):
     """Load a model from Hugging Face."""
     # get model adapter
@@ -315,7 +316,7 @@ def load_model(
         model, tokenizer = load_xft_model(model_path, xft_config)
         return model, tokenizer
     kwargs["revision"] = revision
-
+    kwargs["cache_dir"] = cache_dir 
     if dtype is not None:  # Overwrite dtype if it is provided in the arguments.
         kwargs["torch_dtype"] = dtype
 
