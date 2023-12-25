@@ -97,6 +97,8 @@ class LlamaForCausalLM(transformers.models.llama.modeling_llama.LlamaForCausalLM
             shift_labels = shift_labels.view(-1)
             # Enable model parallelism
             shift_labels = shift_labels.to(shift_logits.device)
+            print(shift_logits.shape)
+            print(shift_labels.shape)
             loss = loss_fct(shift_logits, shift_labels)
             print(loss.mean())
             loss = loss.mean()
