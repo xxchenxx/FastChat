@@ -32,6 +32,7 @@ def run_eval(
     max_gpu_memory,
     dtype,
     revision,
+    cache_dir
 ):
     questions = load_questions(question_file, question_begin, question_end)
     # random shuffle the questions to balance the loading
@@ -63,6 +64,7 @@ def run_eval(
                 max_gpu_memory,
                 dtype=dtype,
                 revision=revision,
+                cache_dir=cache_dir
             )
         )
 
@@ -82,6 +84,7 @@ def get_model_answers(
     max_gpu_memory,
     dtype,
     revision,
+    cache_dir=None
 ):
     model, tokenizer = load_model(
         model_path,
@@ -93,6 +96,7 @@ def get_model_answers(
         load_8bit=False,
         cpu_offloading=False,
         debug=False,
+        cache_dir=cache_dir
     )
 
     for question in tqdm(questions):
@@ -279,6 +283,11 @@ if __name__ == "__main__":
         default="main",
         help="The model revision to load.",
     )
+    parser.add_argument(
+        "--cache_dir",
+        type=str,
+        default=None
+    )
 
     args = parser.parse_args()
 
@@ -309,6 +318,7 @@ if __name__ == "__main__":
         max_gpu_memory=args.max_gpu_memory,
         dtype=str_to_torch_dtype(args.dtype),
         revision=args.revision,
+        cache_dir=args.cache_dir
     )
 
     reorg_answer_file(answer_file)
