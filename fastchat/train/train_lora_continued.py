@@ -112,7 +112,7 @@ class LlamaForCausalLM(transformers.models.llama.modeling_llama.LlamaForCausalLM
             loss_order = torch.argsort(loss, descending=True)
             quarter_size = loss_order.size(0) // 4
             # print(loss.shape)
-            loss = loss[loss_order[quarter_size*2:quarter_size*3]].mean()
+            loss = loss[loss_order[quarter_size*3:quarter_size*4]].mean()
 
         if not return_dict:
             output = (logits,) + outputs[1:]
