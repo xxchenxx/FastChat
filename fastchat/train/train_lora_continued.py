@@ -20,7 +20,7 @@ import logging
 import pathlib
 import typing
 import os
-
+from safetensors.torch import load_file
 from deepspeed import zero
 from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -266,7 +266,11 @@ def train():
     if model_args.lora_checkpoint:
         print(f"Loading lora_checkpoint from {model_args.lora_checkpoint}")
         state_dict = model.state_dict()
-        lora_checkpoint = torch.load(model_args.lora_checkpoint, map_location="cpu")
+        if not model_args.lora_checkpoint.endswith("safetensors"):
+            lora_checkpoint = torch.load(model_args.lora_checkpoint, map_location="cpu")
+        else:
+            lora_checkpoint = load_file(model_args.lora_checkpoint)
+            
         for key in state_dict:
             if 'lora' in key:
                 print(key)
