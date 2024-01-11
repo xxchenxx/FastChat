@@ -115,6 +115,7 @@ class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
             kl_reg = 1
             g_losses = g_func(loss.detach() - loss.max().detach(), l=kl_reg)
             weights = g_losses / g_losses.sum()
+            print(weights)
             loss = torch.sum(weights.detach() * loss)
 
         if not return_dict:
