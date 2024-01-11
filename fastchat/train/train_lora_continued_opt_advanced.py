@@ -104,8 +104,9 @@ class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
             # print(shift_labels.shape)
             loss = loss_fct(shift_logits, shift_labels)
             loss = loss.reshape(bs, -1)
-            mask = torch.ones_like(shift_labels.reshape(bs, -1))
+            mask = shift_labels.reshape(bs, -1) != -100
             num_non_zeros = mask.sum(1)
+            num_non_zeros[num_non_zeros <= 1] = 1
             loss = (loss * mask).sum(1) / num_non_zeros
             # print(loss.shape)
             # print(loss.mean())
