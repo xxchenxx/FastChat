@@ -110,7 +110,8 @@ class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
             # print(loss.shape)
             # print(loss.mean())
             # print(loss.shape)
-            # print(loss)
+            print(loss)
+            print(loss.detach() - loss.max().detach())
             # sort the loss
             kl_reg = 1
             g_losses = g_func(loss.detach() - loss.max().detach(), l=kl_reg)
