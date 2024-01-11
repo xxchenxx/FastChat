@@ -269,11 +269,7 @@ def train():
                 print(key)
 
         for key in list(lora_checkpoint.keys()):
-            if 'opt' in model_args.model_name_or_path:
-                Akey = key.replace("decoder.", "")
-            else:
-                Akey = key
-            key_split = Akey.split('.')
+            key_split = key.split('.')
             new_key = '.'.join(key_split[:-1]) + ".default.weight"
             lora_checkpoint[new_key] = lora_checkpoint.pop(key)
         state_dict.update(lora_checkpoint)
