@@ -43,6 +43,16 @@ from typing import Optional, Tuple, Union, List
 from torch.nn import CrossEntropyLoss
 import torch.nn.functional as F
 from transformers.modeling_outputs import CausalLMOutputWithPast
+
+def g_func(losses, l):
+    return torch.exp(losses/l)
+
+def h_func(losses, delta=1., l_min=0.75, l_max=1.8):
+    return 2. * delta * losses / max(l_max - l_min, 1e-6) - delta * (l_max + l_min) / max(l_max - l_min, 1e-6)
+
+def f_func(losses, delta=1.):
+    return 1 - losses**2 / delta**2
+
 class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
     def forward(
         self,
@@ -102,10 +112,10 @@ class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
             # print(loss.shape)
             # print(loss)
             # sort the loss
-            loss_order = torch.argsort(loss, descending=True)
-            quarter_size = loss_order.size(0) // 4
-            # print(loss.shape)
-            loss = loss[loss_order[quarter_size*1:quarter_size*2]].mean()
+            kl_reg = 1
+            g_losses = g_func(loss.detach() - loss.max().detach(), l=kl_reg)
+            weights = g_losses / g_losses.sum()
+            loss = torch.sum(weights.detach() * loss)
 
         if not return_dict:
             output = (logits,) + outputs[1:]
