@@ -274,6 +274,10 @@ def train():
         for key in state_dict:
             if 'lora' in key:
                 print(key)
+        
+        for key in lora_checkpoint:
+            print(key)
+            
         for key in list(lora_checkpoint.keys()):
             key_split = key.split('.')
             new_key = '.'.join(key_split[:-1]) + ".default.weight"
