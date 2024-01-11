@@ -62,6 +62,14 @@ class ModelArguments:
         },
     )
 
+    portion: int = field(
+        default=0,
+        metadata={
+            "help": "Path to a checkpoint to resume training from. "
+            "This can be a pretrained model or a checkpoint from a previous run."
+        },
+    )
+
 
 @dataclass
 class DataArguments:
