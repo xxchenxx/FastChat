@@ -739,6 +739,22 @@ class GoogleT5Adapter(BaseModelAdapter):
         return model, tokenizer
 
 
+
+class OPTAdapter(BaseModelAdapter):
+    """The model adapter for google/Flan based models, such as Salesforce/codet5p-6b, lmsys/fastchat-t5-3b-v1.0, flan-t5-*, flan-ul2"""
+
+    def match(self, model_path: str):
+        return "opt" in model_path.lower()
+
+    def load_model(self, model_path: str, from_pretrained_kwargs: dict):
+        revision = from_pretrained_kwargs.get("revision", "main")
+        tokenizer = AutoTokenizer.from_pretrained(model_path, revision=revision)
+        model = AutoModel.from_pretrained(
+            model_path,
+            **from_pretrained_kwargs,
+        )
+        return model, tokenizer
+
 class KoalaAdapter(BaseModelAdapter):
     """The model adapter for Koala"""
 
@@ -2077,6 +2093,7 @@ register_model_adapter(DeepseekCoderAdapter)
 register_model_adapter(DeepseekChatAdapter)
 register_model_adapter(MetaMathAdapter)
 register_model_adapter(SolarAdapter)
+register_model_adapter(OPTAdapter)
 
 # After all adapters, try the default base adapter.
 register_model_adapter(BaseModelAdapter)
