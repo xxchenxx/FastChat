@@ -43,12 +43,22 @@ from typing import Optional, Tuple, Union, List
 from torch.nn import CrossEntropyLoss
 import torch.nn.functional as F
 from transformers.modeling_outputs import CausalLMOutputWithPast
-class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
+
+def g_func(losses, l):
+    return torch.exp(losses/l)
+
+def h_func(losses, delta=1., l_min=0.75, l_max=1.8):
+    return 2. * delta * losses / max(l_max - l_min, 1e-6) - delta * (l_max + l_min) / max(l_max - l_min, 1e-6)
+
+def f_func(losses, delta=1.):
+    return 1 - losses**2 / delta**2
+
+class LlamaForCausalLM(transformers.models.llama.modeling_llama.LlamaForCausalLM):
     def forward(
         self,
         input_ids: torch.LongTensor = None,
         attention_mask: Optional[torch.Tensor] = None,
-        head_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
         past_key_values: Optional[List[torch.FloatTensor]] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.LongTensor] = None,
@@ -64,10 +74,10 @@ class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
-        outputs = self.model.decoder(
+        outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            head_mask=head_mask,
+            position_ids=position_ids,
             past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
             use_cache=use_cache,
@@ -76,7 +86,14 @@ class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
             return_dict=return_dict,
         )
 
-        logits = self.lm_head(outputs[0]).contiguous()
+        hidden_states = outputs[0]
+        if self.config.pretraining_tp > 1:
+            lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
+            logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.config.pretraining_tp)]
+            logits = torch.cat(logits, dim=-1)
+        else:
+            logits = self.lm_head(hidden_states)
+        logits = logits.float()
 
         loss = None
         if labels is not None:
@@ -102,10 +119,11 @@ class OPTForCausalLM(transformers.models.opt.modeling_opt.OPTForCausalLM):
             # print(loss.shape)
             # print(loss)
             # sort the loss
-            loss_order = torch.argsort(loss, descending=True)
-            quarter_size = loss_order.size(0) // 4
-            # print(loss.shape)p
-            loss = loss[loss_order[-quarter_size:]].mean()
+            kl_reg = 600
+            g_losses = g_func(loss.detach() - loss.max().detach(), l=kl_reg)
+            weights = g_losses / (1e-9 + g_losses.sum())
+            print(loss, loss.detach() - loss.max().detach(), weights)
+            loss = torch.sum(weights.detach() * loss)
 
         if not return_dict:
             output = (logits,) + outputs[1:]
@@ -130,7 +148,6 @@ class TrainingArguments(transformers.TrainingArguments):
         },
     )
     flash_attn: bool = False
-    
 
 
 @dataclass
@@ -212,7 +229,7 @@ def train():
         else (torch.bfloat16 if training_args.bf16 else torch.float32)
     )
 
-    model = OPTForCausalLM.from_pretrained(
+    model = LlamaForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
         device_map=device_map,
@@ -270,7 +287,11 @@ def train():
                 print(key)
 
         for key in list(lora_checkpoint.keys()):
-            key_split = key.split('.')
+            if 'opt' in model_args.model_name_or_path:
+                Akey = key.replace("decoder.", "")
+            else:
+                Akey = key
+            key_split = Akey.split('.')
             new_key = '.'.join(key_split[:-1]) + ".default.weight"
             lora_checkpoint[new_key] = lora_checkpoint.pop(key)
         state_dict.update(lora_checkpoint)
