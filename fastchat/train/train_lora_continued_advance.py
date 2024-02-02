@@ -119,7 +119,7 @@ class LlamaForCausalLM(transformers.models.llama.modeling_llama.LlamaForCausalLM
             # print(loss.shape)
             # print(loss)
             # sort the loss
-            kl_reg = 600
+            kl_reg = 10
             g_losses = g_func(loss.detach() - loss.max().detach(), l=kl_reg)
             weights = g_losses / (1e-9 + g_losses.sum())
             print(loss, loss.detach() - loss.max().detach(), weights)
